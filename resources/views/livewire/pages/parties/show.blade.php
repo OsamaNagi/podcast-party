@@ -5,14 +5,16 @@ use Livewire\Volt\Component;
 
 new class extends Component {
     public ListeningParty $listeningParty;
+    public isFinished = false;
 
     public function mount(ListeningParty $listeningParty): void
     {
+        
         $this->listeningParty = $listeningParty;
     }
 }; ?>
 
-<div x-data="{
+<div class="!font-mono" x-data="{
                 audio: null,
                 isLoading: true,
                 isPlaying: false,
@@ -21,6 +23,7 @@ new class extends Component {
                 currentTime: 0,
                 countDownText: '',
                 startTimestamp: {{ $listeningParty->start_time->timestamp }},
+                endTimestamp: {{ $listeningParty->end_time ? $listeningParty->end_time->timestamp : 'null' }},
 
                 initializeAudioPlayer() {
                     this.audio = this.$refs.audioPlayer;
@@ -35,6 +38,7 @@ new class extends Component {
 
                     this.audio.addEventListener('play', () => {
                         this.isPlaying = true;
+                        this.isReady = true;
                     });
 
                     this.audio.addEventListener('pause', () => {
@@ -42,18 +46,19 @@ new class extends Component {
                     });
                 },
 
+                finishListeningParty() {
+
+                },
+
                 checkAndUpdate() {
                     const now = Math.floor(Date.now() / 1000);
                     const timeUntilStart = this.startTimestamp - now;
 
                     if (timeUntilStart <= 0) {
+                        this.isLive = true;
                         if (!this.isPlaying) {
                             this.isLive = true;
-                            if (this.isReady) {
-                                this.audio.play().catch(error => {
-                                    console.error('Playback error:', error);
-                                });
-                            }
+                            this.playAudio();
                         }
                     } else {
                         const days = Math.floor(timeUntilStart / 86400);
@@ -66,22 +71,19 @@ new class extends Component {
 
                 playAudio() {
                     const now = Math.floor(Date.now() / 1000);
-                    const elapsedTime = Math.max(0, now - this.startTimestamp);
-                    this.audio.currentTime = elapsedTime;
+                    this.audio.currentTime = Math.max(0, now - this.startTimestamp);
                     this.audio.play().catch(error => {
                         console.error('Playback error:', error);
                         this.isPlaying = false;
+                        this.isReady = false;
                     });
                 },
 
                 joinAndBeReady() {
                     this.isReady = true;
-                    this.audio.play().then(() => {
-                        this.audio.pause();
-                    }).catch(error => {
-                        console.error('Playback error:', error);
-                        this.isPlaying = false;
-                    });
+                    if (this.isLive) {
+                        this.playAudio();
+                    }
                 },
 
                 formatTime(seconds) {
@@ -127,6 +129,12 @@ new class extends Component {
                         <p class="whitespace-nowrap" x-text="countDownText"></p>
                     </div>
                 </div>
+
+                <x-button x-show="!isReady" @click="joinAndBeReady()" class="w-full font-bold mt-8">Join and be ready</x-button>
+
+                <h2 x-show="isReady" class="mt-8 text-center text-xl font-mono font-bold text-blue-600">
+                    Ready to start the party, stay tuned. 🥵🔥
+                </h2>
             </div>
         </div>
 
@@ -136,6 +144,7 @@ new class extends Component {
             <div>Current Time: <span x-text="formatTime(currentTime)"></span></div>
             <div>Start Time: {{ $listeningParty->start_time }}</div>
             <div x-show="isLoading">Loading....</div>
+            <x-button x-show="!isReady" @click="joinAndBeReady()" class="w-full font-bold mt-8">Join and be ready</x-button>
         </div>
     @endif
 </div>

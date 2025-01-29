@@ -48,7 +48,7 @@ new class extends Component {
     }
 }; ?>
 
-<div class="min-h-screen bg-indigo-50 flex flex-col pt-8">
+<div class="min-h-screen bg-indigo-50 flex flex-col pt-8 !font-mono">
     <div class="flex justify-center items-center px-4">
         <div class="w-full max-w-2xl">
             <x-card shadow="lg" rounded="lg">
