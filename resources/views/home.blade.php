@@ -14,7 +14,8 @@
         <wireui:scripts />
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="antialiased font-sans">
+    <body class="antialiased font-sans bg-indigo-50">
+        <h1 class="text-center mt-8 text-3xl text-slate-900 font-mono font-extrabold">🥵 Podcaster</h1>
         <livewire:dashboard />
     </body>
 </html>

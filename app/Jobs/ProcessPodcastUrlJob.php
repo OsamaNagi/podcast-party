@@ -4,8 +4,10 @@ namespace App\Jobs;
 
 use App\Models\Podcast;
 use Carbon\CarbonInterval;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 class ProcessPodcastUrlJob implements ShouldQueue
 {
@@ -21,6 +23,7 @@ class ProcessPodcastUrlJob implements ShouldQueue
 
     /**
      * Execute the job.
+     * @throws Exception
      */
     public function handle(): void
     {
@@ -35,11 +38,38 @@ class ProcessPodcastUrlJob implements ShouldQueue
         $episodeMediaUrl = (string) $latestEpisode->enclosure['url'];
 
         $namespaces = $latestEpisode->getNameSpaces(true);
-        $itunesNamespace = $namespaces['itunes'];
+        $itunesNamespace = $namespaces['itunes'] ?? null;
 
-        $episodeLength = $latestEpisode->children($itunesNamespace)->duration;
+        $episodeLength = null;
 
-        $interval = CarbonInterval::createFromFormat('H:i:s', $episodeLength);
+        if ($itunesNamespace) {
+            $episodeLength = (string) $latestEpisode->children($itunesNamespace)->duration;
+        }
+
+        if(empty($episodeLength)) {
+            $fileSize = (int) $latestEpisode->enclosure['length'];
+            $bitrate = 128000;
+            $durationInSeconds = ceil($fileSize * 8 / $bitrate);
+            $episodeLength = (string) $durationInSeconds;
+        }
+
+        try {
+            if (strpos($episodeLength, ':') !== false) {
+                $parts = explode(':', $episodeLength);
+                if(count($parts) === 2) {
+                    $interval = CarbonInterval::createFromFormat('i:s', $episodeLength);
+                } else if (count($parts) === 3) {
+                    $interval = CarbonInterval::createFromFormat('H:i:s', $episodeLength);
+                } else {
+                    throw new Exception('Invalid duration format');
+                }
+            } else {
+                $interval = CarbonInterval::seconds((int) $episodeLength);
+            }
+        } catch (Exception $e) {
+            Log::error('Error parsing episode duration: ' . $e->getMessage());
+            $interval = CarbonInterval::hour();
+        }
 
         $endTime = $this->listeningParty->start_time->add($interval);
 
